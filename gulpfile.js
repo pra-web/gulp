@@ -4,7 +4,11 @@ var gulp = require('gulp'),
     less = require('gulp-less'),
     sprite = require('gulp.spritesmith'),
     concat = require('gulp-concat-css'),
-    autoprefixer = require('gulp-autoprefixer');
+    autoprefixer = require('gulp-autoprefixer'),
+	base64 = require('gulp-base64'),
+	rename = require("gulp-rename"),
+	uglifycss = require('gulp-uglifycss'),
+	cleanCSS = require('gulp-clean-css');
 
 //Запускает локальный сервер в реальном времени
 gulp.task('browser-sync', function () {
@@ -37,14 +41,28 @@ gulp.task('sprite', function () {
 
 });
 
-gulp.task('less', function () {
+gulp.task('style', function () {
     gulp.src('app/theme/less/**/*.less')
         .pipe(less())
+		.pipe(base64())
         .pipe(concat('style.css'))
-        .pipe(autoprefixer({
+		.pipe(autoprefixer({
             browsers: ['last 12 versions'],
             cascade: false
         }))
+        .pipe(gulp.dest('app/theme/css/'))
+		.pipe(browserSync.reload({
+            stream: true
+        }))
+		.pipe(rename('style.min.css'))
+		.pipe(cleanCSS({debug: true}, function(details) {
+            console.log(details.name + ': ' + details.stats.originalSize);
+            console.log(details.name + ': ' + details.stats.minifiedSize);
+        }))
+		.pipe(uglifycss({
+		  "maxLineLen": 80,
+		  "uglyComments": true
+		}))
         .pipe(gulp.dest('app/theme/css/'))
         .pipe(browserSync.reload({
             stream: true
@@ -59,18 +77,15 @@ gulp.task('html', function () {
 });
 
 
-
 //Отслеживает изменение в файлах и запускает необходимое функцию
 gulp.task('watch', function () {
-    gulp.run('less', 'html', 'browser-sync', 'sprite'); //запуск функций
-
+    gulp.run('style', 'html', 'browser-sync', 'sprite', 'images'); //запуск функций
     gulp.watch('app/theme/less/**/*.less', function (event) {
-        gulp.run('less');
+        gulp.run('style');
     });
     gulp.watch('app/theme/images/sprite/*.*', function (event) {
         gulp.run('sprite');
     });
-
     gulp.watch('app/**/*.html', function (event) {
         gulp.run('html');
     });
